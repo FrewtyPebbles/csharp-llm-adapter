@@ -35,9 +35,7 @@ public class OllamaAgent : BaseAgent
         images ??= [];
 
         OllamaMessage message = new(content, MessageSender.User, Images:images);
-        _history.Append(message);
-        _history.Append(message);
-        Console.WriteLine(_history.Serialize()[0].Role);
+        _history.Add(message);
         IAsyncEnumerable<ChatResponseStream?> rawStreamingResponse = _client.ChatAsync(
             new ChatRequest
             {

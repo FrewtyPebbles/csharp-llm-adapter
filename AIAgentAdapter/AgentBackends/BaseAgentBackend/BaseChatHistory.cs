@@ -8,9 +8,9 @@ public abstract record BaseChatHistory<TSerializedHistory, THistoryArtifactSeria
 
     public List<HistoryArtifact<THistoryArtifactSerialized>> History { get; init; } = History ?? [];
 
-    public void Append(HistoryArtifact<THistoryArtifactSerialized> artifact)
+    public void Add(HistoryArtifact<THistoryArtifactSerialized> artifact)
     {
-        History.Append(artifact);
+        History.Add(artifact);
     }
 
     public abstract TSerializedHistory Serialize();

@@ -17,17 +17,15 @@ public record OllamaMessage(
 {
     public override Message Serialize()
     {
-        return new Message(
-            role: Sender switch
+        return new Message {
+            Role = Sender switch
             {
                 MessageSender.Agent => ChatRole.Assistant,
                 MessageSender.User => ChatRole.User,
                 _ => throw new NotImplementedException()
             },
-            content:Content,
-            images:Images
-                .Select(bytes => Encoding.UTF8.GetString(bytes))
-                .ToArray()
-        );
+            Content = Content,
+            Images = [.. Images.Select(bytes => Encoding.UTF8.GetString(bytes))]
+        };
     }
 }

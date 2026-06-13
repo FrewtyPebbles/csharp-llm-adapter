@@ -91,6 +91,5 @@ public class OllamaStreamResponse : BaseStreamResponse
         }
 
         _chunkChannel.Writer.Complete();
-        Console.WriteLine("CHUNK CHANNEL FINISHED");
     }
 }

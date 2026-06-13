@@ -1,20 +1,10 @@
 ﻿using AIAgentAdapter.AgentBackends.BaseAgentBackend;
 using AIAgentAdapter.AgentBackends.OllamaAgentBackend;
-using Xunit.Abstractions;
-using Xunit;
 
 namespace AIAgentAdapter.Tests;
 
 public class UnitTest1
 {
-
-    private readonly ITestOutputHelper _output;
-
-    // 👈 xUnit automatically injects this helper here
-    public UnitTest1(ITestOutputHelper output)
-    {
-        _output = output;
-    }
 
     [Fact]
     public async void GenerateResponse()
@@ -27,6 +17,5 @@ public class UnitTest1
                 Console.Write(responseTokens.Content);
             }
         }
-        Console.WriteLine("TEST FINISHED");
     }
 }

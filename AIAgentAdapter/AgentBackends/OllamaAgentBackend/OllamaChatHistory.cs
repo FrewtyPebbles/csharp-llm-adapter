@@ -20,7 +20,7 @@ public record OllamaChatHistory(string SystemPrompt = "", List<HistoryArtifact<M
 
         foreach (HistoryArtifact<Message> artifact in History)
         {
-            serializedHistory.Append(artifact.Serialize());
+            serializedHistory.Add(artifact.Serialize());
         }
 
         return serializedHistory;
