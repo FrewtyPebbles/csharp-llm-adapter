@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using System.Threading.Channels;
 using AIAgentAdapter.AgentBackends.BaseAgentBackend;
 using OllamaSharp.Models.Chat;
+using System.Linq;
 
 namespace AIAgentAdapter.AgentBackends.OllamaAgentBackend;
 
@@ -26,8 +27,10 @@ public class OllamaStreamResponse : BaseStreamResponse
         string contentChunk;
         Message? message;
 
-        var detectedToolCalls = new List<ToolCallData>();
+        List<ToolCallChunk> toolCalls = [];
+        List<OllamaToolResponse> toolResponses = [];
 
+        string toolResponseString;
 
         await foreach (var rawResponse in _rawStreamingResponse)
         {
@@ -39,13 +42,11 @@ public class OllamaStreamResponse : BaseStreamResponse
             {
                 thinking ??= "";
 
-                if (message.Content is not null)
-                {
-                    thinking += message.Content;
+                thinking += message?.Thinking;
 
-                    // Write to queue
-                    await _chunkChannel.Writer.WriteAsync(new ThinkingTokensChunk(message.Content));
-                }
+                // Write to queue
+                await _chunkChannel.Writer.WriteAsync(new ThinkingTokensChunk(message?.Thinking));
+                
                 continue;
             }
             
@@ -58,23 +59,44 @@ public class OllamaStreamResponse : BaseStreamResponse
 
             if (message?.ToolCalls is not null && message.ToolCalls.Any())
             {
-                foreach (var toolCall in message.ToolCalls)
+                foreach (Message.ToolCall toolCall in message.ToolCalls)
                 {
-                    if (toolCall.Function is not null)
+                    if (toolCall.Function is not null && toolCall.Function.Name is not null)
                     {  
-                        ToolCallData toolCallData = new ToolCallData(toolCall.Id, toolCall.Function.Name, toolCall.Function.Arguments);
-                        detectedToolCalls.Add(toolCallData);
                         
                         string toolName = toolCall.Function.Name;
 
-                        var nodeDictionary = toolCallData.ToolArguments.ToDictionary<KeyValuePair<string, object>, string, JsonNode?>(
+                        var nodeDictionary = toolCall.Function.Arguments.ToDictionary<KeyValuePair<string, object>, string, JsonNode?>(
                             kvp => kvp.Key,
                             kvp => JsonValue.Create(kvp.Value)
                         );
 
                         var jsonObject = new JsonObject(nodeDictionary);
 
-                        await _chunkChannel.Writer.WriteAsync(new ToolCallChunk(toolName, jsonObject, toolCallData.Id));
+                        var toolCallChunk = new ToolCallChunk(toolName, jsonObject, toolCall.Id);
+
+                        toolCalls.Add(toolCallChunk);
+
+                        await _chunkChannel.Writer.WriteAsync(toolCallChunk);
+
+                        if (_agent._tools.Contains(toolName))
+                        {
+
+                            Dictionary<string, object> dictionaryArgs = nodeDictionary.ToDictionary(
+                                kvp => kvp.Key,
+                                kvp => GetRawValue(kvp.Value)
+                            );
+                            toolResponseString = _agent._tools[toolName].Execute(dictionaryArgs);
+                            OllamaToolResponse toolResponse = new(toolName, toolResponseString, toolCall.Id);
+                            toolResponses.Add(toolResponse);
+                            await _chunkChannel.Writer.WriteAsync(new OllamaToolResponseChunk(toolResponse));
+                        }
+                        else
+                        {
+                            OllamaToolResponse toolResponse = new(toolName, $"The tool \"{toolName}\" is not an existing tool.", toolCall.Id);
+                            toolResponses.Add(toolResponse);
+                            await _chunkChannel.Writer.WriteAsync(new OllamaToolResponseChunk(toolResponse));
+                        }
                     }
                 }
             }
@@ -85,11 +107,27 @@ public class OllamaStreamResponse : BaseStreamResponse
             }
         }
 
-        if (detectedToolCalls.Count != 0)
+        _agent._history.Add(new OllamaMessage(content, MessageSender.User, toolCalls, null, thinking));
+
+        foreach (OllamaToolResponse toolResponse in toolResponses)
         {
-            // TODO: Call the triggered tools
+            _agent._history.Add(toolResponse);
         }
 
         _chunkChannel.Writer.Complete();
     }
+
+    static object GetRawValue(JsonNode? node)
+    {
+        if (node is JsonValue jsonValue)
+        {
+            // Automatically unwrap primitives (bool, string, int, double, etc)
+            if (jsonValue.TryGetValue(out string? s)) return s;
+            if (jsonValue.TryGetValue(out double d)) return d;
+            if (jsonValue.TryGetValue(out bool b)) return b;
+            if (jsonValue.TryGetValue(out int i)) return i;
+        }
+        return node?.ToString() ?? "";
+    }
 }
+
