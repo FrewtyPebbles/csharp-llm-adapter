@@ -5,7 +5,7 @@ using OllamaSharp.Models.Chat;
 
 namespace AIAgentAdapter.AgentBackends.OllamaAgentBackend;
 
-public record OllamaChatHistory(string SystemPrompt = "", List<HistoryArtifact<Message>>? History = null) : BaseChatHistory<List<Message>, Message>(SystemPrompt, History)
+public record OllamaChatHistory(string SystemPrompt = "", List<HistoryArtifact>? History = null) : BaseChatHistory(SystemPrompt, History)
 {
     public override List<Message> Serialize()
     {
@@ -18,9 +18,9 @@ public record OllamaChatHistory(string SystemPrompt = "", List<HistoryArtifact<M
             }
         };
 
-        foreach (HistoryArtifact<Message> artifact in History)
+        foreach (HistoryArtifact artifact in History)
         {
-            serializedHistory.Add(artifact.Serialize());
+            serializedHistory.Add((Message)artifact.Serialize());
         }
 
         return serializedHistory;

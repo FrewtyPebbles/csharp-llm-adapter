@@ -3,4 +3,4 @@ using OllamaSharp.Models.Chat;
 
 namespace AIAgentAdapter.AgentBackends.OllamaAgentBackend;
 
-public record OllamaToolResponseChunk(OllamaToolResponse OllamaToolResponse) : ToolResponseChunk<Message>(OllamaToolResponse);
+public record OllamaToolResponseChunk(OllamaToolResponse OllamaToolResponse) : ToolResponseChunk(OllamaToolResponse);

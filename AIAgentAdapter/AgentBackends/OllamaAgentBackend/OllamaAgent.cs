@@ -17,23 +17,23 @@ public class OllamaAgent : BaseAgent
 
     public OllamaToolRegistry _tools;
 
-    public OllamaAgent(string Host, string Model, JsonObject? History = null, string SystemPrompt = "", List<BaseAgentBackend.Tool>? tools = null)
+    public OllamaAgent(string Host, string Model, string SystemPrompt, List<BaseAgentBackend.Tool>? tools = null)
     {
         _client = new OllamaApiClient(new Uri(Host), Model);
         _model = Model;
         _tools = new(tools ?? []);
-        
-        if (History is not null && JsonSerializer.Deserialize<OllamaChatHistory>(History) is OllamaChatHistory deserializedChatHistory)
-        {
-            _history = deserializedChatHistory;
-        }
-        else
-        {
-            _history = new OllamaChatHistory(SystemPrompt);
-        }
+        _history = new OllamaChatHistory(SystemPrompt);
     }
 
-    public override async Task<BaseStreamResponse> Prompt(string content, List<byte[]>? images = null, bool think = true)
+    public OllamaAgent(string Host, string Model, OllamaChatHistory History, List<BaseAgentBackend.Tool>? tools = null)
+    {
+        _client = new OllamaApiClient(new Uri(Host), Model);
+        _model = Model;
+        _tools = new(tools ?? []);
+        _history = History;
+    }
+
+    public override BaseStreamResponse Prompt(string content, List<byte[]>? images = null, bool think = true)
     {
         images ??= [];
 

@@ -3,16 +3,16 @@ using System.Text.Json.Nodes;
 
 namespace AIAgentAdapter.AgentBackends.BaseAgentBackend;
 
-public abstract record BaseChatHistory<TSerializedHistory, THistoryArtifactSerialized>(string SystemPrompt = "", List<HistoryArtifact<THistoryArtifactSerialized>>? History = null)
+public abstract record BaseChatHistory(string SystemPrompt = "", List<HistoryArtifact>? History = null)
 {
 
-    public List<HistoryArtifact<THistoryArtifactSerialized>> History { get; init; } = History ?? [];
+    public List<HistoryArtifact> History { get; init; } = History ?? [];
 
-    public void Add(HistoryArtifact<THistoryArtifactSerialized> artifact)
+    public void Add(HistoryArtifact artifact)
     {
         History.Add(artifact);
     }
 
-    public abstract TSerializedHistory Serialize();
+    public abstract object Serialize();
 
 }

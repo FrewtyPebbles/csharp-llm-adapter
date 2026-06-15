@@ -10,15 +10,10 @@ namespace AIAgentAdapter.AgentBackends.OllamaAgentBackend;
 public record ToolCallData(string Id, string  Name, IDictionary<string, object> ToolArguments);
 
 
-public class OllamaStreamResponse : BaseStreamResponse
+public class OllamaStreamResponse(IAsyncEnumerable<ChatResponseStream?> rawStreamingResponse, OllamaAgent agent) : BaseStreamResponse
 {
-    public IAsyncEnumerable<ChatResponseStream?> _rawStreamingResponse;
-    public OllamaAgent _agent;
-    public OllamaStreamResponse(IAsyncEnumerable<ChatResponseStream?> rawStreamingResponse, OllamaAgent agent)
-    {
-        _rawStreamingResponse = rawStreamingResponse;
-        _agent = agent;
-    }
+    public IAsyncEnumerable<ChatResponseStream?> _rawStreamingResponse = rawStreamingResponse;
+    public OllamaAgent _agent = agent;
 
     public async override Task ListenForChunks()
     {
@@ -66,14 +61,12 @@ public class OllamaStreamResponse : BaseStreamResponse
                         
                         string toolName = toolCall.Function.Name;
 
-                        var nodeDictionary = toolCall.Function.Arguments.ToDictionary<KeyValuePair<string, object>, string, JsonNode?>(
+                        var dictionaryArgs = toolCall.Function.Arguments.ToDictionary<KeyValuePair<string, object>, string, object>(
                             kvp => kvp.Key,
-                            kvp => JsonValue.Create(kvp.Value)
+                            kvp => kvp.Value
                         );
 
-                        var jsonObject = new JsonObject(nodeDictionary);
-
-                        var toolCallChunk = new ToolCallChunk(toolName, jsonObject, toolCall.Id);
+                        var toolCallChunk = new ToolCallChunk(toolName, dictionaryArgs, toolCall.Id);
 
                         toolCalls.Add(toolCallChunk);
 
@@ -82,18 +75,15 @@ public class OllamaStreamResponse : BaseStreamResponse
                         if (_agent._tools.Contains(toolName))
                         {
 
-                            Dictionary<string, object> dictionaryArgs = nodeDictionary.ToDictionary(
-                                kvp => kvp.Key,
-                                kvp => GetRawValue(kvp.Value)
-                            );
+                            
                             toolResponseString = _agent._tools[toolName].Execute(dictionaryArgs);
-                            OllamaToolResponse toolResponse = new(toolName, toolResponseString, toolCall.Id);
+                            OllamaToolResponse toolResponse = new(toolName, dictionaryArgs, toolResponseString, toolCall.Id);
                             toolResponses.Add(toolResponse);
                             await _chunkChannel.Writer.WriteAsync(new OllamaToolResponseChunk(toolResponse));
                         }
                         else
                         {
-                            OllamaToolResponse toolResponse = new(toolName, $"The tool \"{toolName}\" is not an existing tool.", toolCall.Id);
+                            OllamaToolResponse toolResponse = new(toolName, dictionaryArgs, $"The tool \"{toolName}\" is not an existing tool.", toolCall.Id);
                             toolResponses.Add(toolResponse);
                             await _chunkChannel.Writer.WriteAsync(new OllamaToolResponseChunk(toolResponse));
                         }

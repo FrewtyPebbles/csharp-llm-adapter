@@ -13,9 +13,9 @@ public enum ResponseChunkType
 
 public record BaseResponseChunk(ResponseChunkType Type);
 
-public record ToolResponseChunk<THistoryArtifactSerialized>(HistoryArtifact<THistoryArtifactSerialized>.ToolResponse ToolResponse) : BaseResponseChunk(ResponseChunkType.ToolResponse);
+public record ToolResponseChunk(ToolResponseArtifact ToolResponse) : BaseResponseChunk(ResponseChunkType.ToolResponse);
 
-public record ToolCallChunk(string FunctionName, JsonObject Arguments, string? ID = null) : BaseResponseChunk(ResponseChunkType.ToolCall);
+public record ToolCallChunk(string FunctionName, Dictionary<string, object> Arguments, string? ID = null) : BaseResponseChunk(ResponseChunkType.ToolCall);
 
 public record ResponseTokensChunk(string Content, List<ToolCallChunk>? ToolCalls = null) : BaseResponseChunk(ResponseChunkType.ResponseTokens)
 {

@@ -5,16 +5,12 @@ using AIAgentAdapter.AgentBackends.BaseAgentBackend;
 
 namespace AIAgentAdapter.AgentBackends.OllamaAgentBackend;
 
-public record OllamaMessage(
-        string Content, 
-        MessageSender Sender, 
-        List<ToolCallChunk>? ToolCalls = null, 
-        List<byte[]>? Images = null, 
-        string? Thinking = null
-    ) : HistoryArtifact<Message>.BaseMessage(
-        Content, Sender, ToolCalls, Images, Thinking
-    )
+public record OllamaMessage : BaseMessageArtifact
 {
+    public OllamaMessage(string Content, MessageSender Sender, List<ToolCallChunk>? ToolCalls = null, List<byte[]>? Images = null, string? Thinking = null) : base(Content, Sender, ToolCalls, Images, Thinking)
+    {
+    }
+
     public override Message Serialize()
     {
         return new Message {
