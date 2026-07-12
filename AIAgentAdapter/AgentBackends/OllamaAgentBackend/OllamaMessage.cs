@@ -12,7 +12,23 @@ public record OllamaMessage : BaseMessageArtifact
     }
 
     public override Message Serialize()
-    {
+    {   
+        List<Message.ToolCall> ollamaToolCalls = [];
+        int index = 0;
+        foreach (var toolCall in ToolCalls)
+        {
+            ollamaToolCalls.Add(new()
+            {
+                Function = new()
+                {
+                    Index = index,
+                    Name = toolCall.FunctionName,
+                    Arguments = toolCall.Arguments
+                },
+                Id = toolCall.ID
+            });
+            index++;
+        }
         return new Message {
             Role = Sender switch
             {
@@ -20,6 +36,7 @@ public record OllamaMessage : BaseMessageArtifact
                 MessageSender.User => ChatRole.User,
                 _ => throw new NotImplementedException()
             },
+            ToolCalls = ollamaToolCalls,
             Content = Content,
             Images = [.. Images.Select(bytes => Encoding.UTF8.GetString(bytes))]
         };

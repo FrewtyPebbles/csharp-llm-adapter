@@ -6,7 +6,7 @@ using OllamaSharp.Models.Chat;
 
 namespace AIAgentAdapter.AgentBackends.OllamaAgentBackend;
 
-public class OllamaAgent : BaseAgent
+public class OllamaAgent : BaseAgent, IDisposable
 {
 
     OllamaApiClient _client;
@@ -33,6 +33,11 @@ public class OllamaAgent : BaseAgent
         _history = History;
     }
 
+    public void Dispose()
+    {
+        _client?.Dispose();
+    }
+
     public override BaseStreamResponse Prompt(string content, List<byte[]>? images = null, bool think = true)
     {
         images ??= [];
@@ -50,5 +55,16 @@ public class OllamaAgent : BaseAgent
             }
         );
         return new OllamaStreamResponse(rawStreamingResponse, this);
+    }
+
+    public override async IAsyncEnumerable<ModelInstallStatus> InstallModel(string model, CancellationToken cancellationToken = default)
+    {
+        await foreach (var status in _client.PullModelAsync(model))
+        {
+            if (status != null)
+                yield return new ModelInstallStatus(model, (float)status.Percent / 100f, ModelInstallStatusState.Installing, status.Status);
+        }
+        
+        yield return new ModelInstallStatus(model, (float)1.0, ModelInstallStatusState.Finished, "Model has installed succesfully.");
     }
 }

@@ -9,14 +9,9 @@ public record OllamaChatHistory(string SystemPrompt = "", List<HistoryArtifact>?
 {
     public override List<Message> Serialize()
     {
-        List<Message> serializedHistory = new List<Message>
-        {
-            new Message
-            {
-                Role = ChatRole.System,
-                Content = SystemPrompt
-            }
-        };
+        List<Message> serializedHistory = [
+            new(ChatRole.System, SystemPrompt)
+        ];
 
         foreach (HistoryArtifact artifact in History)
         {

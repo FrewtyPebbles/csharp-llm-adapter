@@ -15,6 +15,8 @@ public class OllamaStreamResponse(IAsyncEnumerable<ChatResponseStream?> rawStrea
     public IAsyncEnumerable<ChatResponseStream?> _rawStreamingResponse = rawStreamingResponse;
     public OllamaAgent _agent = agent;
 
+    record ToolTask(Task<string> Task, string ToolName, Dictionary<string, object> DictionaryArgs, string? ToolCallId);
+
     public async override Task ListenForChunks()
     {
         string? thinking = null;
@@ -24,6 +26,7 @@ public class OllamaStreamResponse(IAsyncEnumerable<ChatResponseStream?> rawStrea
 
         List<ToolCallChunk> toolCalls = [];
         List<OllamaToolResponse> toolResponses = [];
+        List<ToolTask> toolTasks = [];
 
         string toolResponseString;
 
@@ -61,10 +64,10 @@ public class OllamaStreamResponse(IAsyncEnumerable<ChatResponseStream?> rawStrea
                         
                         string toolName = toolCall.Function.Name;
 
-                        var dictionaryArgs = toolCall.Function.Arguments.ToDictionary<KeyValuePair<string, object>, string, object>(
+                        var dictionaryArgs = toolCall.Function?.Arguments?.ToDictionary<KeyValuePair<string, object>, string, object>(
                             kvp => kvp.Key,
                             kvp => kvp.Value
-                        );
+                        ) ?? new Dictionary<string, object>();
 
                         var toolCallChunk = new ToolCallChunk(toolName, dictionaryArgs, toolCall.Id);
 
@@ -74,12 +77,7 @@ public class OllamaStreamResponse(IAsyncEnumerable<ChatResponseStream?> rawStrea
 
                         if (_agent._tools.Contains(toolName))
                         {
-
-                            
-                            toolResponseString = _agent._tools[toolName].Execute(dictionaryArgs);
-                            OllamaToolResponse toolResponse = new(toolName, dictionaryArgs, toolResponseString, toolCall.Id);
-                            toolResponses.Add(toolResponse);
-                            await _chunkChannel.Writer.WriteAsync(new OllamaToolResponseChunk(toolResponse));
+                            toolTasks.Add(new ToolTask(Task.Run(() => _agent._tools[toolName].Execute(dictionaryArgs)), toolName, dictionaryArgs, toolCall.Id));
                         }
                         else
                         {
@@ -97,7 +95,15 @@ public class OllamaStreamResponse(IAsyncEnumerable<ChatResponseStream?> rawStrea
             }
         }
 
-        _agent._history.Add(new OllamaMessage(content, MessageSender.User, toolCalls, null, thinking));
+
+        _agent._history.Add(new OllamaMessage(content, MessageSender.Agent, toolCalls, null, thinking));
+
+        foreach (var toolTask in toolTasks)
+        {
+            OllamaToolResponse toolResponse = new(toolTask.ToolName, toolTask.DictionaryArgs, await toolTask.Task, toolTask.ToolCallId);
+                toolResponses.Add(toolResponse);
+                await _chunkChannel.Writer.WriteAsync(new OllamaToolResponseChunk(toolResponse));
+        }
 
         foreach (OllamaToolResponse toolResponse in toolResponses)
         {

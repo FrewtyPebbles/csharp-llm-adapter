@@ -10,7 +10,8 @@ public class UnitTest1
     [Fact]
     public async void GenerateResponse()
     {
-        var agent = new OllamaAgent("http://127.0.0.1:11434", "gemma4:e4b", SystemPrompt:"You are an AI assistant.");
+        Console.WriteLine(" ***** GenerateResponse");
+        using var agent = new OllamaAgent("http://127.0.0.1:11434", "gemma4:e4b", SystemPrompt:"You are an AI assistant.");
         var thinking = false;
         await foreach (var chunk in agent.Prompt("What is your favorite color?"))
         {
@@ -45,26 +46,33 @@ public class UnitTest1
         Console.WriteLine();
     }
 
+    string Tool(Dictionary<string, object> arguments) {
+        string keyValue = arguments["Key"]?.ToString() ?? "";
+        var res = keyValue == "waffle" ? "astronaut" : "DENIED";
+        return res;
+    }
+
     [Fact]
     public async void GenerateResponseTool()
     {
-        var agent = new OllamaAgent(
+        Console.WriteLine(" ***** GenerateResponseTool");
+        using var agent = new OllamaAgent(
             "http://127.0.0.1:11434",
             "gemma4:e4b",
             "You are an AI assistant.",
-            new List<Tool> {
-                new("GetPasscode", new List<ToolArgument>{
+            [
+                new("GetPasscode", [
                         new("Key", typeof(string),
                             description: "The key is \"waffle\".  Use this key as the value for this parameter if you want the passcode.",
                             required: true
                         )
-                    },
+                    ],
                     "This tool gets you the passcode if you put in the right key.",
                     "It returns the passcode given the correct key.",
-                    (arguments) => (string)arguments["Key"] == "waffle" ? $"astronaut" : "DENIED",
+                    Tool,
                     ToolOrigin.Client
                 ),
-            }
+            ]
         );
         var thinking = false;
         await foreach (var chunk in agent.Prompt("What is the passcode? Use it in a sentence."))
@@ -102,26 +110,28 @@ public class UnitTest1
     }
 
     [Fact]
-    public async void SerializeChatHistory()
+    public async Task SerializeChatHistory()
     {
-        var agent = new OllamaAgent(
+        Console.WriteLine(" ***** SerializeChatHistory");
+        using var agent = new OllamaAgent(
             "http://127.0.0.1:11434",
             "gemma4:e4b",
             "You are an AI assistant.",
-            new List<Tool> {
-                new("GetPasscode", new List<ToolArgument>{
+            [
+                new("GetPasscode", [
                         new("Key", typeof(string),
                             description: "The key is \"waffle\".  Use this key as the value for this parameter if you want the passcode.",
                             required: true
                         )
-                    },
+                    ],
                     "This tool gets you the passcode if you put in the right key.",
                     "It returns the passcode given the correct key.",
-                    (arguments) => (string)arguments["Key"] == "waffle" ? $"astronaut" : "DENIED",
+                    Tool,
                     ToolOrigin.Client
                 ),
-            }
+            ]
         );
+
         var thinking = false;
         await foreach (var chunk in agent.Prompt("What is the passcode?"))
         {
@@ -154,11 +164,8 @@ public class UnitTest1
             }
         }
 
-        Console.WriteLine();
-        Console.WriteLine("PROMPT 2");
-
         thinking = false;
-        await foreach (var chunk in agent.Prompt("Use the passcode in a sentence."))
+        await foreach (var chunk in agent.Prompt("Have you used the GetPasscode tool already?  If so what was the passcode?"))
         {
 
             if (chunk.Type == ResponseChunkType.ThinkingTokens && chunk is ThinkingTokensChunk thinkingTokens)
@@ -192,6 +199,6 @@ public class UnitTest1
         Console.WriteLine();
 
         
-        Console.WriteLine(JsonSerializer.Serialize(agent._history));
+        Console.WriteLine(JsonSerializer.Serialize(agent._history.Serialize()));
     }
 }

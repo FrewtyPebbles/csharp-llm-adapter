@@ -3,15 +3,12 @@ using OllamaSharp.Models.Chat;
 
 namespace AIAgentAdapter.AgentBackends.OllamaAgentBackend;
 
-public record OllamaToolResponse : ToolResponseArtifact
+public record OllamaToolResponse(string FunctionName, Dictionary<string, object> Arguments, string Response, string? ID = null) 
+    : ToolResponseArtifact(FunctionName, Arguments, Response, ID)
 {
-    public OllamaToolResponse(string FunctionName, Dictionary<string, object> Arguments, string Response, string? ID = null) : base(FunctionName, Arguments, Response, ID)
-    {
-    }
-
     public override Message Serialize()
     {
-        return new Message
+        return new()
         {
             Role = ChatRole.Tool,
             ToolName = FunctionName,

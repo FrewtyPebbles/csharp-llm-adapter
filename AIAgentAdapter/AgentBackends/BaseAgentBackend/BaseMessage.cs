@@ -7,8 +7,8 @@ namespace AIAgentAdapter.AgentBackends.BaseAgentBackend;
 
 public enum MessageSender
 {
-    Agent = 0,
-    User = 1,
+    Agent,
+    User,
 }
 
 // OLLAMA DERIVED TYPES
